@@ -6,6 +6,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/shubhamdhama/cockroach-mcp/pkg/db"
 )
 
 func Start() {
@@ -25,6 +26,12 @@ func Start() {
 	}
 }
 
-func handleListTables(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultText("Tables: [Placeholder]"), nil
+func handleListTables(
+	ctx context.Context, req mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	tables, err := db.ListTables()
+	if err != nil {
+		return mcp.NewToolResultError("Failed to fetch tables: " + err.Error()), nil
+	}
+	return mcp.NewToolResultText("Tables: " + tables), nil
 }
