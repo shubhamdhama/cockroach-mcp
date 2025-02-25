@@ -11,10 +11,12 @@ import (
 )
 
 func main() {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatal(err)
-	}
+	// TODO: Hack. Cline don't seem to have $HOME set.
+	home := "/Users/shubham/"
+	// home, err := os.UserHomeDir()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 	// Open a log file (create if it doesn't exist, append to it)
 	logFilePath := filepath.Join(home, "data", "cockroach-mcp.log")
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
