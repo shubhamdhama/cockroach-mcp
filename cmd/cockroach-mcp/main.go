@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
 
 	"github.com/joho/godotenv"
@@ -11,12 +12,18 @@ import (
 )
 
 func main() {
-	// TODO: Hack. Cline don't seem to have $HOME set.
-	home := "/Users/shubham/"
-	// home, err := os.UserHomeDir()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	home, err := os.UserHomeDir()
+	if err != nil {
+		// Fallback method if os.UserHomeDir() fails
+		log.Println("os.UserHomeDir() failed, trying another method...")
+
+		usr, err := user.Current()
+		if err != nil {
+			log.Fatal("Failed to get user home directory:", err)
+			return
+		}
+		home = usr.HomeDir
+	}
 	// Open a log file (create if it doesn't exist, append to it)
 	logFilePath := filepath.Join(home, "data", "cockroach-mcp.log")
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
