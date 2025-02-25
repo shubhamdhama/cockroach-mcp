@@ -29,9 +29,12 @@ func Start() {
 func handleListTables(
 	ctx context.Context, req mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
+	log.Printf("handleListTables: %v", req)
 	tables, err := db.ListTables()
 	if err != nil {
+		log.Printf("Failed to fetch tables: %v", err)
 		return mcp.NewToolResultError("Failed to fetch tables: " + err.Error()), nil
 	}
+	log.Printf("Fetched tables: %v", tables)
 	return mcp.NewToolResultText("Tables: " + tables), nil
 }
