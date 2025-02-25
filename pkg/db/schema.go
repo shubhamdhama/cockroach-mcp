@@ -1,6 +1,10 @@
 package db
 
-import "strings"
+import (
+	"context"
+	"fmt"
+	"strings"
+)
 
 func ListTables() (string, error) {
 	rows, err := GetDB().Query(
@@ -23,4 +27,52 @@ func ListTables() (string, error) {
 	}
 
 	return strings.Join(tables, ", "), nil
+}
+
+func RunSQL(ctx context.Context, query string) (string, error) {
+	rows, err := GetDB().QueryContext(ctx, query)
+	if err != nil {
+		return "", fmt.Errorf("failed to query: %v", err)
+	}
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve columns: %v", err)
+	}
+
+	var results [][]any
+	for rows.Next() {
+		columns := make([]any, len(cols))
+		columnPointers := make([]any, len(cols))
+		for i := range columns {
+			columnPointers[i] = &columns[i]
+		}
+		if err := rows.Scan(columnPointers...); err != nil {
+			return "", fmt.Errorf("failed to scan row: %v", err)
+		}
+		results = append(results, columns)
+	}
+
+	return formatAsMarkdown(cols, results), nil
+}
+
+func formatAsMarkdown(cols []string, results [][]any) string {
+	var sb strings.Builder
+	sb.WriteString("| " + strings.Join(cols, " | ") + " |\n")
+	separator := make([]string, len(cols))
+	for i := range separator {
+		separator[i] = "---"
+	}
+	sb.WriteString("| " + strings.Join(separator, " | ") + " |\n")
+
+	for _, row := range results {
+		var rowValues []string
+		for _, col := range row {
+			rowValues = append(rowValues, fmt.Sprintf("%v", col))
+		}
+		sb.WriteString("| " + strings.Join(rowValues, " | ") + " |\n")
+	}
+
+	return sb.String()
 }
