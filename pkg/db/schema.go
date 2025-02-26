@@ -29,7 +29,19 @@ func ListTables() (string, error) {
 	return strings.Join(tables, ", "), nil
 }
 
-func RunSQL(ctx context.Context, query string) (string, error) {
+func Execute(ctx context.Context, query string) (string, error) {
+	result, err := GetDB().ExecContext(ctx, query)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute: %v", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch affected rows: %d", err)
+	}
+	return fmt.Sprintf("Execution successful. Rows affected: %d", count), nil
+}
+
+func Query(ctx context.Context, query string) (string, error) {
 	rows, err := GetDB().QueryContext(ctx, query)
 	if err != nil {
 		return "", fmt.Errorf("failed to query: %v", err)

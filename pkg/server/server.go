@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -20,6 +21,7 @@ func Start() {
 		"list_tables",
 		mcp.WithDescription("Fetches the list of tables from CockroachDB"),
 	)
+	s.AddTool(listTablesTool, handleListTables)
 
 	runSQLTool := mcp.NewTool("run_sql",
 		mcp.WithDescription("Execute a single SQL statement against the database"),
@@ -27,8 +29,10 @@ func Start() {
 			mcp.Required(),
 			mcp.Description("The SQL query to execute"),
 		),
+		mcp.WithString("mode",
+			mcp.Description("Use 'execute' for non-returning commands, otherwise 'query' (default)."),
+		),
 	)
-	s.AddTool(listTablesTool, handleListTables)
 	s.AddTool(runSQLTool, handleRunSQL)
 
 	if err := server.ServeStdio(s); err != nil {
@@ -57,9 +61,16 @@ func handleRunSQL(
 	if !ok || query == "" {
 		return mcp.NewToolResultError("Missing or invalid SQL query"), nil
 	}
-	result, err := db.RunSQL(ctx, query)
+	mode, ok := req.Params.Arguments["mode"].(string)
+	var result string
+	var err error
+	if !ok || strings.ToLower(mode) != "execute" {
+		result, err = db.Query(ctx, query)
+	} else {
+		result, err = db.Execute(ctx, query)
+	}
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to run SQL: %v", err)), nil
 	}
-	return mcp.NewToolResultText(fmt.Sprintf("Result:\n%s", result)), nil
+	return mcp.NewToolResultText(fmt.Sprintf("Output: \n%s", result)), nil
 }
