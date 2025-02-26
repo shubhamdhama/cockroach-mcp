@@ -81,14 +81,15 @@ func formatAsMarkdown(cols []string, results [][]any) string {
 	for _, row := range results {
 		var rowValues []string
 		for _, col := range row {
-			var v any
+			var s string
 			b, ok := col.([]byte)
 			if ok {
-				v = string(b)
+				s = string(b)
 			} else {
-				v = col
+				s = fmt.Sprintf("%v", col)
 			}
-			rowValues = append(rowValues, fmt.Sprintf("%v", v))
+			s = strings.ReplaceAll(s, "\n", "\\n")
+			rowValues = append(rowValues, s)
 		}
 		sb.WriteString("| " + strings.Join(rowValues, " | ") + " |\n")
 	}
