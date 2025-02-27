@@ -1,15 +1,42 @@
 # cockroach-mcp
 
-This README was written in a hurry, but I hope it serves the purpose for now.
+cockroach-mcp is an MCP server implementation written in Go for integrating with
+CockroachDB. Using the Model Context Protocol (MCP) (see modelcontextprotocol.io
+for details), this project exposes your CockroachDB’s schema and query
+capabilities as tools that MCP hosts can consume.
 
-- **Build the binary:**
-  `go build -o bin/cockroach-mcp cmd/cockroach-mcp/main.go`
-- **Logs:** Logs are stored in `~/data/cockroach-mcp.log`
-- **Environment:** Place your CockroachDB connection URI in `~/.mcp-env`
+## Prerequisites
 
-## How to use an MCP host
+- **Go** installed (Go 1.23+ recommended)
+- A running CockroachDB instance
+- Your CockroachDB connection URI saved in an environment file (see below)
 
-- You can use Claude Code, Claude Desktop or Cline (a VS Code extension).
+## Installation & Build
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone https://github.com/shubhamdhama/cockroach-mcp.git
+   cd cockroach-mcp
+   ```
+
+2. **Build the binary:**
+
+   ```bash
+   go build -o bin/cockroach-mcp cmd/cockroach-mcp/main.go
+   ```
+
+3. **Set up your environment:**
+
+   Save your CockroachDB connection URI in `~/.mcp-env`. For example:
+
+   ```bash
+   echo "COCKROACH_URL=postgresl://demo@127.0.0.1:26257/movr" > ~/.mcp-env
+   ```
+
+## Usage Example
+
+- You can use Claude Code, Claude Desktop, or Cline (a VS Code extension).
 
 ### Configuring Cline
 
@@ -29,10 +56,20 @@ This README was written in a hurry, but I hope it serves the purpose for now.
    }
    ```
 
-Cline should be able to connect to the MCP server, which will be running in
-stdio mode—that is, Cline will start an MCP server process and communicate with
-it over the stdio stream.
-
 In Cline chat, configure your favorite LLM provider. You can start with "VS Code
 LM API," which uses your GitHub Copilot models, and then query anything on Cline
 chat related to your cluster.
+
+## Using MCP inspector
+
+```
+npx @modelcontextprotocol/inspector $HOME/repos/work/cockroach-mcp/bin/cockroach-mcp
+```
+
+---
+
+Logs will be written to `~/.cockroach-mcp.log` for troubleshooting.
+
+---
+
+Feel free to reach out or contribute if you have suggestions for improvement!
