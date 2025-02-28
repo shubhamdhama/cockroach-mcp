@@ -2,10 +2,10 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -59,10 +59,10 @@ func Start() {
 
 	s.AddTool(
 		mcp.NewTool("query_timeseries_metrics",
-			mcp.WithDescription("Fetch metrics related to a timeseries data such as CPU usage, etc."),
-			mcp.WithNumber("tenant", mcp.Required(), mcp.Description("Tenant name")),
-			mcp.WithNumber("start_nanos", mcp.Required(), mcp.Description("Start time in nanoseconds")),
-			mcp.WithNumber("end_nanos", mcp.Required(), mcp.Description("End time in nanoseconds")),
+			mcp.WithDescription("Fetch metrics related to timeseries data (e.g., CPU usage, etc.)"),
+			mcp.WithString("tenant", mcp.Required(), mcp.Description("Tenant name")),
+			mcp.WithString("start_time", mcp.Required(), mcp.Description("Start time in 'YYYY-MM-DD HH:MM:SS' format")),
+			mcp.WithString("end_time", mcp.Required(), mcp.Description("End time in 'YYYY-MM-DD HH:MM:SS' format")),
 			mcp.WithString("query", mcp.Required(), mcp.Description("Query name for timeseries data")),
 		), handleTSQueryAPI)
 
@@ -156,28 +156,35 @@ func handleTSQueryAPI(
 	if !ok || tenant == "" {
 		tenant = DefaultTenant
 	}
-	startFloat, ok := req.Params.Arguments["start_nanos"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("start_nanos must be a number"), nil
+	startStr, ok := req.Params.Arguments["start_time"].(string)
+	if !ok || startStr == "" {
+		return mcp.NewToolResultError("start must be provided as a string in the format 'YYYY-MM-dd HH-mm-ss'"), nil
 	}
-	endFloat, ok := req.Params.Arguments["end_nanos"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("end_nanos must be a number"), nil
+	endStr, ok := req.Params.Arguments["end_time"].(string)
+	if !ok || endStr == "" {
+		return mcp.NewToolResultError("end must be provided as a string in the format 'YYYY-MM-dd HH-mm-ss'"), nil
 	}
+
+	layout := time.DateTime
+	startTime, err := time.Parse(layout, startStr)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to parse start: %v", err)), nil
+	}
+	endTime, err := time.Parse(layout, endStr)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to parse end: %v", err)), nil
+	}
+
+	startNanos := startTime.UnixNano()
+	endNanos := endTime.UnixNano()
+
 	query, ok := req.Params.Arguments["query"].(string)
 	if !ok || query == "" {
 		return mcp.NewToolResultError("Missing or invalid SQL query"), nil
 	}
-	start := int64(startFloat)
-	end := int64(endFloat)
-
-	respMsg, err := clusterapi.GetClient().QueryTimeseries(ctx, tenant, start, end, query)
+	response, err := clusterapi.GetClient().QueryTimeseries(ctx, tenant, startNanos, endNanos, query)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("query failed: %v", err)), nil
 	}
-	respBytes, err := json.Marshal(respMsg)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal response: %v", err)), nil
-	}
-	return mcp.NewToolResultText(string(respBytes)), nil
+	return mcp.NewToolResultText(response), nil
 }

@@ -11,7 +11,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/shubhamdhama/cockroach-mcp/pkg/utils"
 )
 
 type APIClient struct {
@@ -103,10 +107,10 @@ func (c *APIClient) login() error {
 
 func (c *APIClient) QueryTimeseries(
 	ctx context.Context, tenant string, startNanos, endNanos int64, queryName string,
-) (*TimeseriesQueryResponse, error) {
+) (string, error) {
 	queryURL, err := url.JoinPath(c.BaseURL, "ts", "query")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	reqBody := TimeseriesQueryRequest{
 		StartNanos: startNanos,
@@ -119,23 +123,42 @@ func (c *APIClient) QueryTimeseries(
 	}
 	payloadBytes, err := json.Marshal(reqBody)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	log.Printf("payload: %s", string(payloadBytes))
 	req, err := http.NewRequestWithContext(ctx, "POST", queryURL, bytes.NewBuffer(payloadBytes))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	responseBody, err := c.sendRequest(req, tenant)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	var response TimeseriesQueryResponse
 	if err := json.Unmarshal(responseBody, &response); err != nil {
 		log.Printf("Failed to unmarshal response: %v, %s", err, string(responseBody))
-		return nil, err
+		return "", err
 	}
-	return &response, nil
+
+	cols := []string{"timestamp", "value"}
+	var builder strings.Builder
+	for _, result := range response.Results {
+		var rows [][]any
+		for _, queryResult := range result.Datapoints {
+			nanos, err := strconv.ParseInt(queryResult.TimestampNanos, 10, 64)
+			if err != nil {
+				return "", err
+			}
+			t := time.Unix(0, nanos)
+			formatted := t.Format(time.DateTime)
+			rows = append(rows, []any{formatted, queryResult.Value})
+		}
+
+		fmt.Fprintf(&builder, "Result for query: %s\n%s\n",
+			result.Query.Name, utils.FormatAsMarkdown(cols, rows))
+	}
+
+	return builder.String(), nil
 }
 
 func (c *APIClient) sendRequest(req *http.Request, tenant string) ([]byte, error) {

@@ -3,7 +3,8 @@ package db
 import (
 	"context"
 	"fmt"
-	"strings"
+
+	"github.com/shubhamdhama/cockroach-mcp/pkg/utils"
 )
 
 func ListCRDBInternalTables(ctx context.Context) (string, error) {
@@ -78,33 +79,5 @@ func queryInternal(ctx context.Context, query string, args ...any) (string, erro
 		results = append(results, columns)
 	}
 
-	return formatAsMarkdown(cols, results), nil
-}
-
-func formatAsMarkdown(cols []string, results [][]any) string {
-	var sb strings.Builder
-	sb.WriteString("| " + strings.Join(cols, " | ") + " |\n")
-	separator := make([]string, len(cols))
-	for i := range separator {
-		separator[i] = "---"
-	}
-	sb.WriteString("| " + strings.Join(separator, " | ") + " |\n")
-
-	for _, row := range results {
-		var rowValues []string
-		for _, col := range row {
-			var s string
-			b, ok := col.([]byte)
-			if ok {
-				s = string(b)
-			} else {
-				s = fmt.Sprintf("%v", col)
-			}
-			s = strings.ReplaceAll(s, "\n", "\\n")
-			rowValues = append(rowValues, s)
-		}
-		sb.WriteString("| " + strings.Join(rowValues, " | ") + " |\n")
-	}
-
-	return sb.String()
+	return utils.FormatAsMarkdown(cols, results), nil
 }
