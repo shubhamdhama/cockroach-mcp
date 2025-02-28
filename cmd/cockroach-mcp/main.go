@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
 	"os/user"
@@ -25,14 +26,14 @@ func main() {
 		home = usr.HomeDir
 	}
 	// Open a log file (create if it doesn't exist, append to it)
-	logFilePath := filepath.Join(home, "data", "cockroach-mcp.log")
+	logFilePath := filepath.Join(home, ".cockroach-mcp.log")
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("failed to open log file: %v", err)
 	}
 
-	// Redirect the default logger's output to the file
-	log.SetOutput(logFile)
+	multiWriter := io.MultiWriter(os.Stderr, logFile)
+	log.SetOutput(multiWriter)
 
 	envPath := filepath.Join(home, ".mcp-env")
 	if err := godotenv.Load(envPath); err != nil {
