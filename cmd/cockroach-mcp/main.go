@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/joho/godotenv"
+	"github.com/shubhamdhama/cockroach-mcp/pkg/clusterapi"
 	"github.com/shubhamdhama/cockroach-mcp/pkg/db"
 	"github.com/shubhamdhama/cockroach-mcp/pkg/server"
 )
@@ -41,6 +42,7 @@ func main() {
 	}
 
 	db.InitDB()
+	clusterapi.InitAPIClient()
 
 	log.Println("Starting cockroach-mcp server...")
 	server.Start()

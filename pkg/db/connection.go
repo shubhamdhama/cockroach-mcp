@@ -11,7 +11,10 @@ import (
 var db *sql.DB
 
 func InitDB() {
-	connStr := os.Getenv("COCKROACHDB_URL")
+	connStr := os.Getenv("COCKROACH_CONNECTION_URI")
+	if connStr == "" {
+		connStr = os.Getenv("COCKROACHDB_URI")
+	}
 
 	var err error
 	db, err = sql.Open("postgres", connStr)
