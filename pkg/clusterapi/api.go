@@ -3,11 +3,13 @@ package clusterapi
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 )
@@ -33,6 +35,11 @@ func InitAPIClient() {
 		BaseURL: baseURL,
 		HTTPClient: &http.Client{
 			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, // WARNING: Only use this for development!
+				},
+			},
 		},
 	}
 	if err := client.login(); err != nil {
@@ -50,7 +57,11 @@ func (c *APIClient) login() error {
 	if password == "" {
 		log.Fatal("Failed to get password")
 	}
-	loginURL := fmt.Sprintf("%s/login", c.BaseURL)
+	loginURL, err := url.JoinPath(c.BaseURL, "login")
+	if err != nil {
+		log.Fatalf("Failed to build login URL: %v", err)
+	}
+
 	payload := map[string]string{
 		"username": username,
 		"password": password,
@@ -87,14 +98,16 @@ func (c *APIClient) login() error {
 	}
 	c.SessionCookie = sessionCookie
 	log.Print("Login to cockroach cluster APIs successful.")
-	log.Print(sessionCookie)
 	return nil
 }
 
 func (c *APIClient) QueryTimeseries(
 	ctx context.Context, tenant string, startNanos, endNanos int64, queryName string,
 ) (*TimeseriesQueryResponse, error) {
-	queryURL := fmt.Sprintf("%s/ts/query", c.BaseURL)
+	queryURL, err := url.JoinPath(c.BaseURL, "ts", "query")
+	if err != nil {
+		return nil, err
+	}
 	reqBody := TimeseriesQueryRequest{
 		StartNanos: startNanos,
 		EndNanos:   endNanos,
