@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -17,7 +18,6 @@ func main() {
 	defer mcpClient.Close()
 
 	ctx := context.Background()
-
 	log.Println("Initializing client...")
 
 	initRequest := mcp.InitializeRequest{}
@@ -26,7 +26,6 @@ func main() {
 		Name:    "test-client",
 		Version: "1.0.0",
 	}
-
 	initResult, err := mcpClient.Initialize(ctx, initRequest)
 	if err != nil {
 		log.Fatalf("Failed to initialize MCP client: %v", err)
@@ -34,21 +33,44 @@ func main() {
 
 	log.Printf("Initialized with server: %s(%s)",
 		initResult.ServerInfo.Name, initResult.ServerInfo.Version)
-
 	if err := mcpClient.Ping(ctx); err != nil {
 		log.Fatalf("MCP server not responding: %v", err)
 	}
-
 	fmt.Println("Connected to MCP server")
 
-	req := mcp.CallToolRequest{}
+	// req := mcp.CallToolRequest{}
 
-	req.Params.Name = "list_tables"
+	// req.Params.Name = "list_tables"
 
-	result, err := mcpClient.CallTool(ctx, req)
-	if err != nil {
-		log.Fatalf("Tool call failed: %v", err)
+	// result, err := mcpClient.CallTool(ctx, req)
+	// if err != nil {
+	// 	log.Fatalf("Tool call failed: %v", err)
+	// }
+	// fmt.Println("Response from list_tables: ", result.Content)
+
+	// Call TSDB query tool
+	{
+		req := mcp.CallToolRequest{}
+		req.Params.Name = "tsdb_query"
+		req.Params.Arguments = map[string]interface{}{
+			"start":  time.Now().Add(-time.Minute * 2).UnixNano(),
+			"end":    time.Now().UnixNano(),
+			"sample": (time.Second * 10).Nanoseconds(),
+			"queries": []interface{}{
+				map[string]interface{}{
+					"name":              "cpu",
+					"downsampler":       "sum",
+					"source_aggregator": "sum",
+					"derivative":        "none",
+					"sources":           []string{"cpu"},
+				},
+			},
+		}
+
+		resp, err := mcpClient.CallTool(ctx, req)
+		if err != nil {
+			log.Fatalf("Tool call failed: %v", err)
+		}
+		fmt.Println("Response from list_tables: ", resp.Content)
 	}
-
-	fmt.Println("Response from list_tables: ", result.Content)
 }

@@ -2,29 +2,50 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	_ "github.com/lib/pq"
 )
 
-var db *sql.DB
+var appDB, sysDB *sql.DB
 
 func InitDB() {
-	connStr := os.Getenv("COCKROACHDB_URL")
+	host := os.Getenv("COCKROACHDB_HOST")
+	port := os.Getenv("COCKROACHDB_PORT")
+	nPort, err := strconv.Atoi(port)
+	if err != nil {
+		log.Fatalf("port is invalid!")
+	}
 
-	var err error
-	db, err = sql.Open("postgres", connStr)
+	// build connection string
+	appTenantConnStr := fmt.Sprintf("postgresql://root:''@%s:%d?sslmode=disable", host, nPort)
+	sysTenantConnStr := fmt.Sprintf("postgresql://root:''@%s:%d?sslmode=disable", host, nPort)
+
+	appDB, err = sql.Open("postgres", appTenantConnStr)
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %v", err)
 	}
+	if err := appDB.Ping(); err != nil {
+		log.Fatalf("DB ping failed: %v", err)
+	}
 
-	if err := db.Ping(); err != nil {
+	sysDB, err = sql.Open("postgres", sysTenantConnStr)
+	if err != nil {
+		log.Fatalf("Failed to connect to DB: %v", err)
+	}
+	if err := sysDB.Ping(); err != nil {
 		log.Fatalf("DB ping failed: %v", err)
 	}
 	log.Println("Connected to CockroachDB!")
 }
 
-func GetDB() *sql.DB {
-	return db
+func GetAppDB() *sql.DB {
+	return appDB
+}
+
+func GetSystemDB() *sql.DB {
+	return sysDB
 }
